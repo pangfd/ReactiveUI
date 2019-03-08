@@ -29,7 +29,7 @@ namespace EventBuilder.Platforms
         public override AutoPlatform Platform => AutoPlatform.Tizen4;
 
         /// <inheritdoc />
-        public async override Task Extract()
+        public override async Task Extract()
         {
             var packageUnzipPath = await NuGetPackageHelper.InstallPackages(_packageNames, Platform, FrameworkConstants.CommonFrameworks.Tizen4).ConfigureAwait(false);
 
@@ -37,7 +37,6 @@ namespace EventBuilder.Platforms
 
             Assemblies.AddRange(Directory.GetFiles(packageUnzipPath, "ElmSharp*.dll", SearchOption.AllDirectories));
             Assemblies.AddRange(Directory.GetFiles(packageUnzipPath, "Tizen*.dll", SearchOption.AllDirectories));
-            Assemblies.AddRange(Directory.GetFiles(packageUnzipPath, "netstandard.dll", SearchOption.AllDirectories));
 
             foreach (var directory in Directory.GetDirectories(packageUnzipPath, "*.*", SearchOption.AllDirectories))
             {

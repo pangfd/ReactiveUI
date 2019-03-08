@@ -1,34 +1,73 @@
 ﻿<Project Sdk="MSBuild.Sdk.Extras">
 
-  <PropertyGroup>    
-    <TargetFrameworks>net461</TargetFrameworks>
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp3.0</TargetFrameworks>
+    <TargetFrameworks Condition=" '$(OS)' == 'Windows_NT' ">$(TargetFrameworks);net461</TargetFrameworks>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" $(TargetFramework.StartsWith('uap')) ">
+    <PackageCertificateKeyFile>ReactiveUI.Tests_TemporaryKey.pfx</PackageCertificateKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ReactiveUI.Blend\ReactiveUI.Blend.csproj" />
+    <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0" />
+    <PackageReference Include="System.Reactive" Version="4.2.0-preview.102" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ReactiveUI.Testing\ReactiveUI.Testing.csproj" />
-    <ProjectReference Include="..\ReactiveUI.Winforms\ReactiveUI.Winforms.csproj" />
-    <ProjectReference Include="..\ReactiveUI.Wpf\ReactiveUI.Wpf.csproj" />
     <ProjectReference Include="..\ReactiveUI\ReactiveUI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Platforms\**\*.*" />
+    <EmbeddedResource Remove="Platforms\**\*.*" />
+    <None Include="Platforms\**\*.*" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" $(TargetFramework.StartsWith('net4'))">
+    <ProjectReference Include="..\ReactiveUI.Winforms\ReactiveUI.Winforms.csproj" />
+    <ProjectReference Include="..\ReactiveUI.Wpf\ReactiveUI.Wpf.csproj" />
+    <ProjectReference Include="..\ReactiveUI.Blend\ReactiveUI.Blend.csproj" />
+
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="WindowsBase" />
     <Reference Include="UIAutomationTypes" />
-  </ItemGroup>
+    <Reference Include="UIAutomationProvider" />
 
-  <ItemGroup>
-    <Compile Remove="Platforms\**\*.cs" />
-    <None Include="Platforms\**\*.cs" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
+    <Compile Include="Platforms\common-gui\**\*.cs" />
+    <Compile Include="Platforms\wpf\**\*.cs" />
     <Compile Include="Platforms\Winforms\**\*.cs" />
-    <Compile Include="Platforms\Xaml\**\*.cs" />
+    <Compile Include="Platforms\windows-xaml\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" $(TargetFramework.StartsWith('netcoreapp'))">
+    <ProjectReference Include="..\ReactiveUI.Winforms\ReactiveUI.Winforms.csproj" />
+    <ProjectReference Include="..\ReactiveUI.Wpf\ReactiveUI.Wpf.csproj" />
+
+    <Compile Include="Platforms\common-gui\**\*.cs" />
+    <Compile Include="Platforms\wpf\**\*.cs" />
+    <Compile Include="Platforms\Winforms\**\*.cs" />
+    <Compile Include="Platforms\windows-xaml\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" $(TargetFramework.StartsWith('uap')) ">
+    <ProjectReference Include="..\ReactiveUI.Blend\ReactiveUI.Blend.csproj" />
+
+    <PackageReference Include="xunit.runner.devices" Version="2.5.25" />
+
+    <Compile Include="Platforms\common-gui\**\*.cs" />
+    <Compile Include="Platforms\windows-xaml\**\*.cs" />
+    <Compile Include="Platforms\uwp\**\*.cs" />
+
+    <Page Include="Platforms\uwp\**\*.xaml" SubType="Designer" Generator="MSBuild:Compile" />
+    <None Update="**\*.xaml.cs" DependentUpon="%(Filename)" />
+    <Compile Update="**\*.xaml.cs" DependentUpon="%(Filename)" />
   </ItemGroup>
 
   <ItemGroup>

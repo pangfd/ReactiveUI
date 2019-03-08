@@ -22,14 +22,15 @@ namespace EventBuilder.Platforms
     {
         private readonly PackageIdentity[] _packageNames = new[]
         {
-            new PackageIdentity("Xamarin.Essentials", new NuGetVersion("1.0.0")),
+            new PackageIdentity("Xamarin.Essentials", new NuGetVersion("1.0.1")),
+            new PackageIdentity("NetStandard.Library", new NuGetVersion("2.0.0")),
         };
 
         /// <inheritdoc />
         public override AutoPlatform Platform => AutoPlatform.Essentials;
 
         /// <inheritdoc />
-        public async override Task Extract()
+        public override async Task Extract()
         {
             var packageUnzipPath = await NuGetPackageHelper.InstallPackages(_packageNames, Platform).ConfigureAwait(false);
 
@@ -41,17 +42,12 @@ namespace EventBuilder.Platforms
                     "Xamarin.Essentials.dll",
                     SearchOption.AllDirectories);
 
-            var latestVersion = xamarinForms.First(x => x.Contains("netstandard1.0", StringComparison.InvariantCulture));
+            var latestVersion = xamarinForms.First(x => x.Contains("netstandard2.0", StringComparison.InvariantCulture));
             Assemblies.Add(latestVersion);
 
-            if (PlatformHelper.IsRunningOnMono())
+            foreach (var directory in Directory.GetDirectories(packageUnzipPath, "*.*", SearchOption.AllDirectories))
             {
-                CecilSearchDirectories.Add(
-                    @"/Library/Frameworks/Mono.framework/Versions/Current/lib/mono/xbuild-frameworks/.NETPortable/v4.5/Profile/Profile111");
-            }
-            else
-            {
-                CecilSearchDirectories.Add(@"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETPortable\v4.5\Profile\Profile111");
+                CecilSearchDirectories.Add(directory);
             }
         }
     }

@@ -2,194 +2,79 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-//////////////////////////////////////////////////////////////////////
-// ADDINS
-//////////////////////////////////////////////////////////////////////
+#load nuget:https://www.myget.org/F/reactiveui/api/v2?package=ReactiveUI.Cake.Recipe&prerelease
 
-#addin "nuget:?package=Cake.FileHelpers&version=3.1.0"
-#addin "nuget:?package=Cake.Coveralls&version=0.9.0"
-#addin "nuget:?package=Cake.PinNuGetDependency&loaddependencies=true&version=3.2.3"
-#addin "nuget:?package=Cake.Powershell&version=0.4.7"
-#addin "nuget:?package=Cake.Codecov&version=0.5.0"
+Environment.SetVariableNames();
+
+const string project = "ReactiveUI";
 
 //////////////////////////////////////////////////////////////////////
-// MODULES
+// PROJECTS
 //////////////////////////////////////////////////////////////////////
-
-#module nuget:?package=Cake.DotNetTool.Module&version=0.1.0
-
-//////////////////////////////////////////////////////////////////////
-// TOOLS
-//////////////////////////////////////////////////////////////////////
-
-#tool "nuget:?package=OpenCover&version=4.6.519"
-#tool "nuget:?package=ReportGenerator&version=4.0.4"
-#tool "nuget:?package=vswhere&version=2.5.2"
-#tool "nuget:?package=xunit.runner.console&version=2.4.1"
-#tool "nuget:?package=Codecov&version=1.1.0"
-
-//////////////////////////////////////////////////////////////////////
-// DOTNET TOOLS
-//////////////////////////////////////////////////////////////////////
-
-#tool "dotnet:?package=SignClient&version=1.0.82"
-#tool "dotnet:?package=nbgv&version=2.3.38"
-
-//////////////////////////////////////////////////////////////////////
-// ARGUMENTS
-//////////////////////////////////////////////////////////////////////
-
-var target = Argument("target", "Default");
-if (string.IsNullOrWhiteSpace(target))
-{
-    target = "Default";
-}
-
-var includePrerelease = Argument("includePrerelease", false);
-var vsLocationString = Argument("vsLocation", string.Empty);
-var msBuildPathString = Argument("msBuildPath", string.Empty);
-
-//////////////////////////////////////////////////////////////////////
-// PREPARATION
-//////////////////////////////////////////////////////////////////////
-
-// Should MSBuild treat any errors as warnings?
-var treatWarningsAsErrors = false;
-
-// Build configuration
-var local = BuildSystem.IsLocalBuild;
-var isPullRequest = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER"));
-var isRepository = StringComparer.OrdinalIgnoreCase.Equals("reactiveui/reactiveui", TFBuild.Environment.Repository.RepoName);
-
-var vsWhereSettings = new VSWhereLatestSettings() { IncludePrerelease = includePrerelease };
-var vsLocation = string.IsNullOrWhiteSpace(vsLocationString) ? VSWhereLatest(vsWhereSettings) : new DirectoryPath(vsLocationString);
-var msBuildDirectory = includePrerelease ? "./MSBuild/Current/Bin/MSBuild.exe" : "./MSBuild/15.0/Bin/MSBuild.exe";
-var msBuildPath = string.IsNullOrWhiteSpace(msBuildPathString) ? vsLocation.CombineWithFilePath(msBuildDirectory) : new FilePath(msBuildPathString);
-
-var informationalVersion = EnvironmentVariable("GitAssemblyInformationalVersion");
-
-// Artifacts
-var artifactDirectory = "./artifacts/";
-var testsArtifactDirectory = artifactDirectory + "tests/";
-var eventsArtifactDirectory = artifactDirectory + "Events/";
-var binariesArtifactDirectory = artifactDirectory + "binaries/";
-var packagesArtifactDirectory = artifactDirectory + "packages/";
-
-// OpenCover file location
-var testCoverageOutputFile = MakeAbsolute(File(testsArtifactDirectory + "OpenCover.xml"));
 
 // Whitelisted Packages
-var packageWhitelist = new[] 
+var packageWhitelist = new List<FilePath> 
 { 
-    "ReactiveUI",
-    "ReactiveUI.Testing",
-    "ReactiveUI.Events",
-    "ReactiveUI.Events.WPF",
-    "ReactiveUI.Events.Winforms",
-    "ReactiveUI.Events.XamEssentials",
-    "ReactiveUI.Events.XamForms",
-    "ReactiveUI.Fody",
-    "ReactiveUI.Fody.Helpers",
-    "ReactiveUI.AndroidSupport",
-    "ReactiveUI.Blend",
-    "ReactiveUI.WPF",
-    "ReactiveUI.Winforms",
-    "ReactiveUI.XamForms",
-    // TODO: seems the leak tests never worked as part of the CI, fix. For the moment just make sure it compiles.
-    "ReactiveUI.LeakTests"
+    MakeAbsolute(File("./src/ReactiveUI/ReactiveUI.csproj")),
+    MakeAbsolute(File("./src/ReactiveUI.Testing/ReactiveUI.Testing.csproj")),
+    MakeAbsolute(File("./src/ReactiveUI.Events/ReactiveUI.Events.csproj")),
+    MakeAbsolute(File("./src/ReactiveUI.Events.XamEssentials/ReactiveUI.Events.XamEssentials.csproj")),
+    MakeAbsolute(File("./src/ReactiveUI.Events.XamForms/ReactiveUI.Events.XamForms.csproj")),
+    MakeAbsolute(File("./src/ReactiveUI.Fody/ReactiveUI.Fody.csproj")),
+    MakeAbsolute(File("./src/ReactiveUI.Fody.Helpers/ReactiveUI.Fody.Helpers.csproj")),
+    MakeAbsolute(File("./src/ReactiveUI.AndroidSupport/ReactiveUI.AndroidSupport.csproj")),
+    MakeAbsolute(File("./src/ReactiveUI.XamForms/ReactiveUI.XamForms.csproj")),
 };
 
-var packageTestWhitelist = new[]
+if (IsRunningOnWindows())
 {
-    "ReactiveUI.Tests", 
-    "ReactiveUI.Fody.Tests"
+    packageWhitelist.AddRange(new []
+    {
+        MakeAbsolute(File("./src/ReactiveUI.Blend/ReactiveUI.Blend.csproj")),
+        MakeAbsolute(File("./src/ReactiveUI.WPF/ReactiveUI.WPF.csproj")),
+        MakeAbsolute(File("./src/ReactiveUI.Winforms/ReactiveUI.Winforms.csproj")),
+        MakeAbsolute(File("./src/ReactiveUI.Events.WPF/ReactiveUI.Events.WPF.csproj")),
+        MakeAbsolute(File("./src/ReactiveUI.Events.Winforms/ReactiveUI.Events.Winforms.csproj")),
+        // TODO: seems the leak tests never worked as part of the CI, fix. For the moment just make sure it compiles.
+        MakeAbsolute(File("./src/ReactiveUI.LeakTests/ReactiveUI.LeakTests.csproj"))
+    });
+}
+
+var packageTestWhitelist = new List<FilePath>
+{
+    MakeAbsolute(File("./src/ReactiveUI.Tests/ReactiveUI.Tests.csproj")),    
 };
 
-(string targetName, string destination)[] eventGenerators = new[]
+if (IsRunningOnWindows())
 {
-    ("android", "src/ReactiveUI.Events/"),
-    ("ios", "src/ReactiveUI.Events/"),
-    ("mac", "src/ReactiveUI.Events/"),
-    ("uwp", "src/ReactiveUI.Events/"),
-    ("tizen4", "src/ReactiveUI.Events/"),
-    ("wpf", "src/ReactiveUI.Events.WPF/"),
-    ("xamforms", "src/ReactiveUI.Events.XamForms/"),
-    ("winforms", "src/ReactiveUI.Events.Winforms/"),
-    ("essentials", "src/ReactiveUI.Events.XamEssentials/"),
-    ("tvos", "src/ReactiveUI.Events/"),
-    ("NetCoreAppWPF", "src/ReactiveUI.Events.WPF/"),
-    ("NetCoreAppWinforms", "src/ReactiveUI.Events.Winforms/"),
+    packageTestWhitelist.AddRange(new[]
+    {     
+        MakeAbsolute(File("./src/ReactiveUI.Fody.Tests/ReactiveUI.Fody.Tests.csproj"))
+    });
+}
+
+var eventGenerators = new List<(string targetName, DirectoryPath destination)>
+{
+    ("android", MakeAbsolute(Directory("src/ReactiveUI.Events/"))),
+    ("ios", MakeAbsolute(Directory("src/ReactiveUI.Events/"))),
+    ("mac", MakeAbsolute(Directory("src/ReactiveUI.Events/"))),
+    ("tizen4", MakeAbsolute(Directory("src/ReactiveUI.Events/"))),
+    ("essentials", MakeAbsolute(Directory("src/ReactiveUI.Events.XamEssentials/"))),
+    ("tvos", MakeAbsolute(Directory("src/ReactiveUI.Events/"))),
+    ("xamforms", MakeAbsolute(Directory("src/ReactiveUI.Events.XamForms/"))),
 };
 
-// Define global marcos.
-Action Abort = () => { throw new Exception("a non-recoverable fatal error occurred."); };
-
-///////////////////////////////////////////////////////////////////////////////
-// SETUP / TEARDOWN
-///////////////////////////////////////////////////////////////////////////////
-Setup(context =>
+if (IsRunningOnWindows())
 {
-    if (!IsRunningOnWindows())
+    eventGenerators.AddRange(new []
     {
-        throw new NotImplementedException("ReactiveUI will only build on Windows (w/Xamarin installed) because it's not possible to target UWP, WPF and Windows Forms from UNIX.");
-    }
-
-    Information("Building version {0} of ReactiveUI.", informationalVersion);
-
-    CreateDirectory(artifactDirectory);
-    CleanDirectories(artifactDirectory);
-    CreateDirectory(testsArtifactDirectory);
-    CreateDirectory(eventsArtifactDirectory);
-    CreateDirectory(binariesArtifactDirectory);
-    CreateDirectory(packagesArtifactDirectory);
-
-    StartProcess(Context.Tools.Resolve("nbgv.*").ToString(), "cloud");
-});
-
-Teardown(context =>
-{
-    // Executed AFTER the last task.
-});
-
-
-//////////////////////////////////////////////////////////////////////
-// HELPER METHODS
-//////////////////////////////////////////////////////////////////////
-Action<string, string, bool, bool> Build = (solution, packageOutputPath, createPackage, forceUseFullDebugType) =>
-{
-    Information("Building {0} using {1}, createPackage = {2}, forceUseFullDebugType = {3}", solution, msBuildPath, createPackage, forceUseFullDebugType);
-
-    var msBuildSettings = new MSBuildSettings() {
-            ToolPath = msBuildPath,
-            ArgumentCustomization = args => args.Append("/m /NoWarn:VSX1000"),
-            NodeReuse = false,
-            Restore = true
-        }
-        .WithProperty("TreatWarningsAsErrors", treatWarningsAsErrors.ToString())
-        .SetConfiguration("Release")                        
-        .SetVerbosity(Verbosity.Minimal);
-
-    if (forceUseFullDebugType)
-    {
-        msBuildSettings = msBuildSettings.WithProperty("DebugType",  "full");
-    }
-
-    if (createPackage)
-    {
-        if (!string.IsNullOrWhiteSpace(packageOutputPath))
-        {
-            msBuildSettings = msBuildSettings.WithProperty("PackageOutputPath",  MakeAbsolute(Directory(packageOutputPath)).ToString().Quote());
-        }
-        
-        msBuildSettings = msBuildSettings.WithTarget("build;pack");
-    }
-    else
-    {
-        msBuildSettings = msBuildSettings.WithTarget("build");
-    }
-
-    MSBuild(solution, msBuildSettings);
-};
+        ("wpf", MakeAbsolute(Directory("src/ReactiveUI.Events.WPF/"))),
+        ("uwp", MakeAbsolute(Directory("src/ReactiveUI.Events/"))),
+        ("winforms", MakeAbsolute(Directory("src/ReactiveUI.Events.Winforms/"))),
+        ("NetCoreAppWPF", MakeAbsolute(Directory("src/ReactiveUI.Events.WPF/"))),
+        ("NetCoreAppWinforms", MakeAbsolute(Directory("src/ReactiveUI.Events.Winforms/"))),
+    });
+}
 
 //////////////////////////////////////////////////////////////////////
 // TASKS
@@ -198,28 +83,40 @@ Action<string, string, bool, bool> Build = (solution, packageOutputPath, createP
 Task("BuildEventBuilder")
     .Does(() =>
 {
-    Build("./src/EventBuilder.sln", artifactDirectory + "eventbuilder", false, false);
+    BuildProject("./src/EventBuilder.sln", false);
 });
 
 Task("GenerateEvents")
     .IsDependentOn("BuildEventBuilder")
     .Does (() =>
 {
-    var workingDirectory = MakeAbsolute(Directory("./src/EventBuilder/bin/Release/netcoreapp2.1"));
-    var eventBuilder = workingDirectory + "/EventBuilder.dll";
-    var referenceAssembliesPath = vsLocation.CombineWithFilePath("./Common7/IDE/ReferenceAssemblies/Microsoft/Framework");
+    var eventsArtifactDirectory = BuildParameters.ArtifactsDirectory.Combine("Events");
+    EnsureDirectoryExists(eventsArtifactDirectory);
 
-    Information(referenceAssembliesPath.ToString());
+    var workingDirectory = MakeAbsolute(Directory("./src/EventBuilder/bin/Release/netcoreapp3.0"));
+    var eventBuilder = workingDirectory.CombineWithFilePath("EventBuilder.dll");
 
-    Action<string, string> generate = (string platform, string directory) =>
+    DirectoryPath referenceAssembliesPath = null;
+    if (IsRunningOnWindows())
     {
+        referenceAssembliesPath = ToolSettings.VsLocation.Combine("./Common7/IDE/ReferenceAssemblies/Microsoft/Framework");
+    }
+    else
+    {
+        referenceAssembliesPath = Directory("⁨/Library⁩/Frameworks⁩/Libraries/⁨mono⁩");
+    }
+
+    foreach (var eventGenerator in eventGenerators)
+    {
+        var (platform, directory) = eventGenerator;
+
         var settings = new DotNetCoreExecuteSettings
         {
             WorkingDirectory = workingDirectory,
         };
 
         var filename = String.Format("Events_{0}.cs", platform);
-        var output = MakeAbsolute(File(System.IO.Path.Combine(directory, filename))).ToString().Quote();
+        var output = directory.CombineWithFilePath(filename);
 
         Information("Generating events for '{0}'", platform);
         DotNetCoreExecute(
@@ -227,187 +124,33 @@ Task("GenerateEvents")
                     new ProcessArgumentBuilder()
                         .AppendSwitch("--platform","=", platform)
                         .AppendSwitchQuoted("--reference","=", referenceAssembliesPath.ToString())
-                        .AppendSwitchQuoted("--output-path", "=", output),
+                        .AppendSwitchQuoted("--output-path", "=", output.ToString()),
                     settings);
 
         Information("The events have been written to '{0}'", output);
-    };
-
-    var options = new ParallelOptions {
-        MaxDegreeOfParallelism = 1,
-    };
-
-    Parallel.ForEach(eventGenerators, options, arg => generate(arg.targetName, arg.destination));
-
-    CopyFiles(GetFiles("./src/ReactiveUI.**/Events_*.cs"), Directory(eventsArtifactDirectory));
-});
-
-Task("BuildReactiveUIPackages")
-    .IsDependentOn("GenerateEvents")
-    .Does (() =>
-{
-    // Clean the directories since we'll need to re-generate the debug type.
-    CleanDirectories("./src/**/obj/Release");
-    CleanDirectories("./src/**/bin/Release");
-
-    foreach(var package in packageWhitelist)
-    {
-        Build("./src/" + package + "/" + package + ".csproj", packagesArtifactDirectory, true, false);
     }
 
-    CopyFiles(GetFiles("./src/**/bin/Release/**/*"), Directory(binariesArtifactDirectory), true);
+    CopyFiles(GetFiles("./src/ReactiveUI.**/Events_*.cs"), eventsArtifactDirectory);
 });
-
-Task("RunUnitTests")
-    .IsDependentOn("GenerateEvents")
-    .Does(() =>
-{
-    var fodyPackages = new string[]
-    {
-        "ReactiveUI.Fody",
-        "ReactiveUI.Fody.Helpers",
-    };       
-
-    // Clean the directories since we'll need to re-generate the debug type.
-    CleanDirectories("./src/**/obj/Release");
-    CleanDirectories("./src/**/bin/Release");
-
-    foreach (var package in fodyPackages)
-    {
-        Build("./src/" + package + "/" + package + ".csproj", null, true, true);
-    }
-
-    var openCoverSettings =  new OpenCoverSettings {
-            ReturnTargetCodeOffset = 0,
-            MergeOutput = true,
-        }
-        .WithFilter("+[*]*")
-        .WithFilter("-[*.Testing]*")
-        .WithFilter("-[*.Tests*]*")
-        .WithFilter("-[ReactiveUI.Events]*")
-        .WithFilter("-[Splat*]*")
-        .ExcludeByAttribute("*.ExcludeFromCodeCoverage*")
-        .ExcludeByFile("*/*Designer.cs")
-        .ExcludeByFile("*/*.g.cs")
-        .ExcludeByFile("*/*.g.i.cs")
-        .ExcludeByFile("*splat/splat*")
-        .ExcludeByFile("*ApprovalTests*");
-
-    var xunitSettings = new XUnit2Settings {
-        HtmlReport = true,
-        OutputDirectory = testsArtifactDirectory,
-        NoAppDomain = true
-    };
-
-    foreach (var projectName in packageTestWhitelist)
-    {
-        OpenCover(tool => 
-        {
-            Build("./src/" + projectName + "/" + projectName + ".csproj", null, true, true);
-
-            tool.XUnit2("./src/" + projectName + "/bin/" + "**/*.Tests.dll", xunitSettings);
-        },
-        testCoverageOutputFile,
-        openCoverSettings);
-    }
-
-    ReportGenerator(testCoverageOutputFile, testsArtifactDirectory + "Report/");
-}).ReportError(exception =>
-{
-    var apiApprovals = GetFiles("./**/ApiApprovalTests.*");
-    CopyFiles(apiApprovals, artifactDirectory);
-});
-
-Task("UploadTestCoverage")
-    .WithCriteria(() => !local)
-    .WithCriteria(() => isRepository)
-    .IsDependentOn("RunUnitTests")
-    .Does(() =>
-{
-    // Resolve the API key.
-    var token = EnvironmentVariable("CODECOV_TOKEN");
-    if (!string.IsNullOrEmpty(token))
-    {
-        Information("Upload {0} to Codecov server", testCoverageOutputFile);
-
-        // Upload a coverage report.
-        Codecov(testCoverageOutputFile.ToString(), token);
-    }
-});
-
-Task("SignPackages")
-    .WithCriteria(() => !local)
-    .WithCriteria(() => !isPullRequest)
-    .Does(() =>
-{
-    if(EnvironmentVariable("SIGNCLIENT_SECRET") == null)
-    {
-        throw new Exception("Client Secret not found, not signing packages.");
-    }
-
-    var nupkgs = GetFiles(packagesArtifactDirectory + "*.nupkg");
-    foreach(FilePath nupkg in nupkgs)
-    {
-        var packageName = nupkg.GetFilenameWithoutExtension();
-        Information($"Submitting {packageName} for signing");
-
-        StartProcess(Context.Tools.Resolve("SignClient.*").ToString(), new ProcessSettings {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            Arguments = new ProcessArgumentBuilder()
-                .Append("sign")
-                .AppendSwitch("-c", "./SignPackages.json")
-                .AppendSwitch("-i", nupkg.FullPath)
-                .AppendSwitch("-r", EnvironmentVariable("SIGNCLIENT_USER"))
-                .AppendSwitch("-s", EnvironmentVariable("SIGNCLIENT_SECRET"))
-                .AppendSwitch("-n", "ReactiveUI")
-                .AppendSwitch("-d", "ReactiveUI")
-                .AppendSwitch("-u", "https://reactiveui.net")
-            });
-
-        Information($"Finished signing {packageName}");
-    }
-    
-    Information("Sign-package complete");
-});
-
-Task("Package")
-    .IsDependentOn("BuildReactiveUIPackages")
-    .IsDependentOn("PinNuGetDependencies")
-    .IsDependentOn("SignPackages")
-    .Does (() =>
-{
-});
-
-Task("PinNuGetDependencies")
-    .Does (() =>
-{
-    var packages = GetFiles(artifactDirectory + "*.nupkg");
-    foreach(var package in packages)
-    {
-        // only pin whitelisted packages.
-        if(packageWhitelist.Any(p => package.GetFilename().ToString().StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-        {
-            // see https://github.com/cake-contrib/Cake.PinNuGetDependency
-            PinNuGetDependency(package, "ReactiveUI");
-        }
-    }
-});
-
-
 
 //////////////////////////////////////////////////////////////////////
-// TASK TARGETS
+// SETUP
 //////////////////////////////////////////////////////////////////////
 
-Task("Default")
-    .IsDependentOn("Package")
-    .Does (() =>
-{
-});
+BuildParameters.SetParameters(context: Context, 
+                            buildSystem: BuildSystem,
+                            title: project,
+                            whitelistPackages: packageWhitelist,
+                            whitelistTestPackages: packageTestWhitelist,
+                            artifactsDirectory: "./artifacts",
+                            sourceDirectory: "./src");
+
+BuildParameters.Tasks.BuildTask.IsDependentOn("GenerateEvents");
+
+ToolSettings.SetToolSettings(context: Context, usePrereleaseMsBuild: true);
 
 //////////////////////////////////////////////////////////////////////
 // EXECUTION
 //////////////////////////////////////////////////////////////////////
 
-RunTarget(target);
+Build.Run();
